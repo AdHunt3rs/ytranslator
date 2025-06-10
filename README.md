@@ -170,6 +170,10 @@ El archivo `token.json` da acceso a la cuenta de YouTube para las acciones permi
 ## Desinstalación y limpieza
 
 1. **Eliminar el entorno virtual (si usaste uno):**
+   - En CMD de Windows:
+     ```cmd
+     rmdir /s /q venv
+     ```
    - En PowerShell:
      ```powershell
      Remove-Item -Recurse -Force .\venv
