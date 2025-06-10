@@ -77,9 +77,11 @@ Este script automatiza la traducción de títulos y subtítulos de videos de You
        # Agrega más si lo deseas
    }
    ```
+   En el script ya hay **varios idiomas listados pero comentados**. Solo tienes que comentar o descomentar las líneas de los idiomas que necesites (poniendo o quitando el símbolo `#` al inicio de la línea). Tambien puedes añadir otros idiomas incluyendolos en el formato adecuado.
 
 2. **Opciones avanzadas:**  
-   Puedes cambiar el número de hilos (`MAX_WORKERS`) o el directorio de salida (`DEFAULT_OUTPUT_DIR`) en la configuración.
+   - `MAX_WORKERS`: controla el **número de hilos** que se usan para traducir en paralelo. Un valor mayor acelera la traducción si tienes buena conexión, pero puede aumentar el riesgo de bloqueos o límites de cuota en la API. Si tienes problemas de cuota, usa un valor bajo (por ejemplo, 2 o 3).
+   - `DEFAULT_OUTPUT_DIR`: cambia la carpeta donde se guardan los archivos traducidos.
 
 ---
 
