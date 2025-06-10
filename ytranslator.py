@@ -34,7 +34,7 @@ class AppConfig:
         #'Japonés': 'ja',
         #'Noruego': 'no',
         #'Polaco': 'pl',
-        #'Portugués': 'pt',
+        'Portugués': 'pt',
         #'Ruso': 'ru',
         #'Sueco': 'sv',
         #'Ucraniano': 'uk',
