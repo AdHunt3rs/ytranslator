@@ -12,6 +12,9 @@ Este script automatiza la traducción de títulos y subtítulos de vídeos de Yo
 
 - **Python 3.8 o superior**
 - **Acceso a la API de YouTube** (requiere crear un proyecto en Google Cloud y descargar el archivo `client_secrets.json`)
+- **Visibilidad del vídeo:**
+  - El vídeo al que quieras subir los títulos y subtítulos traducidos debe estar en modo **público** o **oculto/no listado** en YouTube.
+  - **No funcionará con vídeos en modo privado**: la API de YouTube no permite modificar títulos ni subtítulos de vídeos privados. Si el vídeo está en privado, primero ponlo como público o no listado, realiza la subida, y luego puedes volver a cambiarlo a privado si lo deseas.
 - **Dependencias Python**:
   - `googletrans==4.0.0rc1`
   - `yt-dlp`
