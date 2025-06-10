@@ -24,10 +24,17 @@ Este script automatiza la traducción de títulos y subtítulos de videos de You
 
 ## Crear y activar un entorno virtual (recomendado)
 
-1. Abre una terminal en la carpeta del proyecto.
-2. Ejecuta:
-   ```powershell
+1. **Abre la consola CMD en modo administrador** en la carpeta del proyecto (clic derecho > "Ejecutar como administrador").
+2. Ejecuta para crear el entorno virtual:
+   ```cmd
    python -m venv venv
+   ```
+3. Activa el entorno virtual en CMD:
+   ```cmd
+   .\venv\Scripts\activate
+   ```
+   Si usas PowerShell:
+   ```powershell
    .\venv\Scripts\Activate.ps1
    ```
    En Linux/Mac:
@@ -35,9 +42,13 @@ Este script automatiza la traducción de títulos y subtítulos de videos de You
    python3 -m venv venv
    source venv/bin/activate
    ```
-3. Instala las dependencias:
-   ```powershell
+4. Instala las dependencias:
+   ```cmd
    pip install -r requirements.txt
+   ```
+5. **Para salir del entorno virtual:**
+   ```cmd
+   deactivate
    ```
 
 ---
