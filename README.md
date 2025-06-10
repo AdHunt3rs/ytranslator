@@ -4,7 +4,7 @@
 
 ## ¿Qué es este script?
 
-Este script automatiza la traducción de títulos y subtítulos de videos de YouTube **desde ESPAÑOL** a los idiomas que elijas (configurados en `TARGET_LANGUAGES` dentro del script), y permite subir tanto los títulos traducidos como los subtítulos generados manualmente a tu canal de YouTube mediante la API oficial.
+Este script automatiza la traducción de títulos y subtítulos de vídeos de YouTube **desde ESPAÑOL** a los idiomas que elijas (configurados en `TARGET_LANGUAGES` dentro del script), y permite subir tanto los títulos traducidos como los subtítulos generados manualmente a tu canal de YouTube mediante la API oficial.
 
 ---
 
@@ -77,7 +77,7 @@ Este script automatiza la traducción de títulos y subtítulos de videos de You
        # Agrega más si lo deseas
    }
    ```
-   En el script ya hay **varios idiomas listados pero comentados**. Solo tienes que comentar o descomentar las líneas de los idiomas que necesites (poniendo o quitando el símbolo `#` al inicio de la línea). Tambien puedes añadir otros idiomas incluyendolos en el formato adecuado.
+   En el script ya hay **varios idiomas listados pero comentados**. Solo tienes que comentar o descomentar las líneas de los idiomas que necesites (poniendo o quitando el símbolo `#` al inicio de la línea). También puedes añadir otros idiomas incluyéndolos en el formato adecuado.
 
 2. **Opciones avanzadas:**  
    - `MAX_WORKERS`: controla el **número de hilos** que se usan para traducir en paralelo. Un valor mayor acelera la traducción si tienes buena conexión, pero puede aumentar el riesgo de bloqueos o límites de cuota en la API. Si tienes problemas de cuota, usa un valor bajo (por ejemplo, 2 o 3).
@@ -94,13 +94,13 @@ Este script automatiza la traducción de títulos y subtítulos de videos de You
    ```
 
 2. **Sigue el menú interactivo:**
-   - Opción 1: Traducir video
+   - Opción 1: Traducir vídeo
    - Opción 2: Autenticarse con YouTube
    - Opción 3: Salir
 
 3. **Para traducir y subir:**
    - Selecciona `1`
-   - Introduce la URL del video de YouTube
+   - Introduce la URL del vídeo de YouTube
    - Especifica el directorio de salida (o deja el valor por defecto)
    - Indica si deseas subir los resultados a YouTube (`y` para sí, `n` para no)
 
@@ -116,10 +116,10 @@ Se generará un archivo `token.json` que permite el acceso futuro sin repetir el
 
 ## ¿Qué hace el script?
 
-1. Descarga los subtítulos automáticos en español del video.
+1. Descarga los subtítulos automáticos en español del vídeo.
 2. Traduce el título y los subtítulos a los idiomas configurados.
 3. Guarda los archivos traducidos en la carpeta de salida.
-4. Sube los títulos traducidos como localizaciones del video (sin modificar el título original en español).
+4. Sube los títulos traducidos como localizaciones del vídeo (sin modificar el título original en español).
 5. Sube los subtítulos traducidos como pistas manuales, con el nombre del idioma (ejemplo: "Inglés", "Español").
 6. Sube también los subtítulos en español como pista manual, para asegurar su presencia aunque ya existan automáticos.
 
@@ -138,14 +138,14 @@ Se generará un archivo `token.json` que permite el acceso futuro sin repetir el
 - **No modifica el título original en español:** Solo añade traducciones en otros idiomas.
 - **No fusiona título y subtítulo:** YouTube los gestiona como elementos separados.
 - **Si subes varias veces una pista de subtítulos con el mismo nombre e idioma, YouTube dará error 409:** Borra la pista anterior si necesitas reemplazarla.
-- **El script solo puede modificar videos de los que seas propietario** (no funciona con permisos de editor).
+- **El script solo puede modificar vídeos de los que seas propietario** (no funciona con permisos de editor).
 - **La calidad de la traducción depende de Google Translate:** Si necesitas traducción profesional, edita los subtítulos antes o integra otra API.
 
 ---
 
 ## Solución de problemas
 
-- **Error 403/400 al subir:** Asegúrate de ser el propietario del video y de estar autenticado correctamente.
+- **Error 403/400 al subir:** Asegúrate de ser el propietario del vídeo y de estar autenticado correctamente.
 - **Error 409 al subir subtítulos:** Borra la pista anterior en YouTube Studio antes de volver a subir.
 - **Traducción de baja calidad:** Edita los subtítulos originales antes de traducir o considera integrar una API de traducción profesional.
 
