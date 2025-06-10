@@ -1,13 +1,10 @@
-# ytranslator
-Youtube title and subtitles translator cli
-
 ---
 
 # YouTube Translator Tool — Guía de uso
 
 ## ¿Qué es este script?
 
-Este script automatiza la traducción de títulos y subtítulos de videos de YouTube a los idiomas que elijas, y permite subir tanto los títulos traducidos como los subtítulos generados manualmente a tu canal de YouTube mediante la API oficial.
+Este script automatiza la traducción de títulos y subtítulos de videos de YouTube **desde ESPAÑOL** a los idiomas que elijas (configurados en `TARGET_LANGUAGES` dentro del script), y permite subir tanto los títulos traducidos como los subtítulos generados manualmente a tu canal de YouTube mediante la API oficial.
 
 ---
 
@@ -23,11 +20,25 @@ Este script automatiza la traducción de títulos y subtítulos de videos de You
   - `google-auth-oauthlib`
   - `google-api-python-client`
 
-Instala los requisitos con:
+---
 
-```powershell
-pip install googletrans==4.0.0rc1 yt-dlp requests google-auth google-auth-oauthlib google-api-python-client
-```
+## Crear y activar un entorno virtual (recomendado)
+
+1. Abre una terminal en la carpeta del proyecto.
+2. Ejecuta:
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+   En Linux/Mac:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+3. Instala las dependencias:
+   ```powershell
+   pip install -r requirements.txt
+   ```
 
 ---
 
