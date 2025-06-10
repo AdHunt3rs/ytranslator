@@ -1,7 +1,5 @@
-## Y T R A N S L A T O R
-## ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-##  adhunt3rs   |   2025   |   V: 0.7
-## --------------------------------------------------
+# Y T R A N S L A T O R
+ ▀  adhunt3rs   |   2025   |   V: 0.7  ▀
 
 # YouTube Translator Tool — Guía de uso
 
