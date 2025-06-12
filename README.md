@@ -28,7 +28,7 @@
 
 ## ¿Qué es este script?
 
-Este script automatiza la traducción y subida de títulos, subtítulos y descripciones de vídeos de YouTube **desde cualquier idioma base** a los idiomas que elijas (configurados en `TARGET_LANGUAGES` dentro del script). El idioma base se autodetecta si es posible, o puedes elegirlo manualmente. Permite subir tanto los títulos, subtítulos y descripciones traducidos a tu canal de YouTube mediante la API oficial.
+Este script automatiza la traducción y subida de títulos, subtítulos y descripciones de vídeos de YouTube **desde cualquier idioma base** a los idiomas que elijas. El idioma base del vídeo se autodetecta si es posible, o puedes elegirlo manualmente. Permite subir los títulos, subtítulos y descripciones traducidos al video de YouTube mediante la API oficial.
 
 ## ¿Qué hace el script?
 
@@ -123,6 +123,7 @@ Para que el script pueda subir traducciones a YouTube, necesitas dos archivos:
 ### - Si NO eres el dueño del canal (operas en nombre de otra persona para subir las traducciones)
 
 1. **El dueño del canal debe generar ambos archivos de login:**
+ Siguiendo los pasos de la sección anterior, debe hacer el proceso como si fuera a operar él mismo el script.
    - `client_secrets.json` (debe estar asociado a un proyecto con la API de YouTube habilitada, antes expliqué como crearlo y descargarlo, vas a tener que buscar por los paneles de google cloud console).
    - `token.json` (se genera tras autenticarse con su cuenta de YouTube usando el script).
 
