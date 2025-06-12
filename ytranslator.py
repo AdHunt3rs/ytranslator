@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 class AppConfig:
     TARGET_LANGUAGES: Dict[str, str] = field(default_factory=lambda: {
         #'Alemán': 'de',
-        #'Chino (Simplificado)': 'zh-cn',
+        #'Chino (Simplificado)': 'zh-CN',
         #'Coreano': 'ko',
         #'Danés': 'da',
         #'Español': 'es',
