@@ -67,6 +67,7 @@ Este script automatiza la traducción de títulos, subtítulos y descripciones d
 ## Crear y activar un entorno virtual (recomendado)
 
 1. **Abre la consola CMD en modo administrador** en la carpeta del proyecto (clic derecho > "Ejecutar como administrador").
+
 2. Ejecuta para crear el entorno virtual:
    ```powershell
    python -m venv venv
@@ -88,7 +89,7 @@ Este script automatiza la traducción de títulos, subtítulos y descripciones d
    ```powershell
    pip install -r requirements.txt
    ```
-5. **Para salir del entorno virtual:**
+5. **Cuando termines con el script, para salir del entorno virtual:**
    ```powershell
    deactivate
    ```
@@ -97,13 +98,43 @@ Este script automatiza la traducción de títulos, subtítulos y descripciones d
 
 ## Configuración de credenciales
 
+Para que el script pueda subir traducciones a YouTube, necesitas dos archivos:
+
+- **client_secrets.json:** Archivo de credenciales OAuth 2.0 generado en Google Cloud (tipo "Escritorio").
+- **token.json:** Archivo que contiene el acceso autorizado a la cuenta de YouTube del canal donde se subirán las traducciones.
+
+### - Si eres el dueño del canal de Youtube donde vas a subir las traducciones
+
 1. **Crea un proyecto en Google Cloud**  
-   Ve a [Google Cloud Console](https://console.cloud.google.com/), crea un proyecto y habilita la API de YouTube Data v3.
+   Ve a [Google Cloud Console](https://console.cloud.google.com/), crea un proyecto y habilita la API de YouTube Data v3. (Vas a tener que buscar por los paneles de google cloud console)
 
 2. **Crea credenciales OAuth 2.0**  
    - Tipo de aplicación: **Escritorio**
    - Descarga el archivo y renómbralo a `client_secrets.json`
    - Colócalo en la misma carpeta que el script
+
+3. **Genera el archivo `token.json`**  
+   - Ejecuta el script y selecciona la opción 2 del menú (autenticación).
+   - Se abrirá una ventana del navegador para iniciar sesión y autorizar el acceso a tu canal de YouTube.
+   - Tras aceptar, se generará el archivo `token.json` en la misma carpeta.
+
+¡Listo! Ya puedes usar el script normalmente.
+
+### - Si NO eres el dueño del canal (operas en nombre de otra persona para subir las traducciones)
+
+1. **El dueño del canal debe generar ambos archivos de login:**
+   - `client_secrets.json` (debe estar asociado a un proyecto con la API de YouTube habilitada, antes expliqué como crearlo y descargarlo, vas a tener que buscar por los paneles de google cloud console).
+   - `token.json` (se genera tras autenticarse con su cuenta de YouTube usando el script).
+
+2. **El dueño del canal te envía el archivo `token.json`.**
+
+3. **Colocas ambos archivos en la carpeta del script:**
+   - `client_secrets.json` (si ya has usado el script, deberías tenerlo, puede ser tuyo o el del dueño si te lo envía, aunque no es necesario. Sólo debe estar asociado a un proyecto con la API de Youtube habilitada.)
+   - `token.json` (el que te envió el dueño, este es el archivo importante)
+
+4. **Ahora puedes operar el script y subir traducciones al canal del dueño, actuando en su nombre.**
+
+> **Nota de seguridad:** El archivo `token.json` da acceso a la cuenta de YouTube del dueño del canal para las acciones permitidas por la API. El dueño puede revocar este acceso en cualquier momento desde https://myaccount.google.com/permissions
 
 ---
 
@@ -128,7 +159,7 @@ Este script automatiza la traducción de títulos, subtítulos y descripciones d
    El script intentará autodetectar el idioma base del vídeo (título, descripción y subtítulos). Si no puede detectarlo, te pedirá que lo indiques manualmente (por ejemplo: `es` para español, `en` para inglés, etc). Puedes traducir desde cualquier idioma soportado por Google Translate.
 
 3. **Opciones avanzadas:**  
-   - `MAX_WORKERS`: controla el **número de hilos** que se usan para traducir en paralelo. Un valor mayor acelera la traducción si tienes buena conexión, pero puede aumentar el riesgo de bloqueos o límites de cuota en la API. Si tienes problemas de cuota, usa un valor bajo (por ejemplo, 2 o 3).
+   - `MAX_WORKERS`: controla el **número de hilos** que se usan para traducir en paralelo. Un valor mayor acelera la traducción si tienes buena conexión, pero puede aumentar el riesgo de bloqueos o límites de cuota en la API. Si tienes problemas de cuota o demasiados errores al traducir, usa un valor bajo (por ejemplo, 1 o 2) (`MAX_WORKERS: int = 3` por defecto).
 
 ---
 
@@ -159,6 +190,9 @@ Este script automatiza la traducción de títulos, subtítulos y descripciones d
 **Importante:** Cada vídeo debe tener su propia carpeta bajo `translations/` para mantener organizadas las traducciones. Si la carpeta ya existe, el script la reutilizará.
 
 4. **Para descargar títulos, descripciones y subtítulos automáticos en el idioma base:**
+   
+   > **Nota:** Con esta opcion puedes descargar los subtítulos extraídos (base) para REVISARLOS MANUALMENTE para corregir errores, a partir de un buen archivo base, revisado, las traducciones tendrán mucho más sentido. Tenlo en cuenta.
+
    - Selecciona `4`
    - Introduce la URL del vídeo de YouTube
    - Indica el nombre de la carpeta para guardar los subtítulos
@@ -310,24 +344,6 @@ El script **no modifica el título ni la descripción original en el idioma base
 - **Error 403/400 al subir:** Asegúrate de ser el propietario del vídeo y de estar autenticado correctamente.
 - **Error 409 al subir subtítulos:** Borra la pista anterior en YouTube Studio antes de volver a subir.
 - **Traducción de baja calidad:** Edita los subtítulos originales antes de traducir o considera integrar una API de traducción profesional.
-
-</details>
-
----
-
-## Guía para autenticación como dueño del canal, si no lo eres. (El dueño del canal debe confiar en ti)
-
-<details>
-<summary>Guía para subir traducciones a un canal que no está asociado a tu cuenta (clic para desplegar)</summary>
-
-1. El dueño del canal debe tener Python 3.8+ y el archivo `client_secrets.json`.
-2. Que ejecute el script y seleccione la opción de autenticación.
-3. Se abrirá su navegador para autorizar el acceso. Debe aceptarlo para que el archvo se cree.
-4. Se generará el archivo `token.json` en la carpeta donde está el script ytranslator. (Este es el archivo que le debe enviar a la persona que operará el script)
-5. Si eres tu quien va a operar el script para subir traducciones a un canal que no es de tu propiedad, debes colocar el `token.json` (que ha generado el dueño del canal y te ha enviado) en la misma carpeta que el script y el `client_secrets.json` (el archivo `client_secrets.json` puede ser el tuyo propio). Para usar la api en nombre de otra cuenta solo necesitas el archivo `token.json`.
-
-**Seguridad:**  
-El archivo `token.json` da acceso a la cuenta de YouTube para las acciones permitidas por la API. El dueño puede revocar el acceso en https://myaccount.google.com/permissions cuando crea necesario.
 
 </details>
 
