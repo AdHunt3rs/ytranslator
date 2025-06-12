@@ -186,6 +186,7 @@ El script utiliza los códigos de idioma de Google Translate. Puedes consultar l
 | Hindi         | hi      |
 | Turco         | tr      |
 | Polaco        | pl      |
+| Portugués     | pt      |
 | Neerlandés    | nl      |
 | Sueco         | sv      |
 | Griego        | el      |
