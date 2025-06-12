@@ -157,13 +157,23 @@ class YouTubeClient:
     def __init__(self, translation_strategy: TranslationStrategy):
         self.translation_strategy = translation_strategy
 
-    def get_video_info(self, url: str) -> Dict:
-        """Extrae título, descripción y subtítulos automáticos en español (si existen) usando yt-dlp"""
+    def get_video_info(self, url: str, preferred_lang: Optional[str] = None) -> Dict:
+        """Extrae título, descripción y subtítulos automáticos en el idioma base detectado o definido por el usuario usando yt-dlp"""
+        # Determinar idioma preferido
+        lang_list = []
+        if preferred_lang and preferred_lang != 'auto':
+            lang_list.append(preferred_lang)
+        # Añadir variantes comunes si es español
+        if preferred_lang in ['es', 'es-419', 'es-ES', 'es-MX']:
+            lang_list.extend([l for l in ['es', 'es-419', 'es-ES', 'es-MX'] if l != preferred_lang])
+        # Si no hay preferido, buscar todos los idiomas soportados por Google Translate
+        if not lang_list:
+            lang_list = ['es', 'en', 'fr', 'it', 'de', 'pt', 'ru', 'ja', 'ko', 'zh-cn', 'ar', 'hi', 'pl', 'uk', 'sv', 'no', 'da']
         ydl_opts = {
             'skip_download': True,
             'writesubtitles': False,  # No descargar manuales
             'writeautomaticsub': True,  # Solo automáticos
-            'subtitleslangs': ['es', 'es-419'],
+            'subtitleslangs': lang_list,
             'quiet': True,
             'no_warnings': True,
         }
@@ -174,17 +184,15 @@ class YouTubeClient:
                     raise YouTubeServiceError("No se pudo obtener información del video")
                 video_id = info.get('id')
                 title = info.get('title')
-                # Extraer descripción si está disponible
                 description = info.get('description', None)
                 # Detectar idioma base si es posible
                 detected_lang = info.get('language') or info.get('original_language') or info.get('subtitles_language')
                 if not detected_lang:
-                    detected_lang = info.get('automatic_captions', {}).keys()
-                    if detected_lang:
-                        detected_lang = list(detected_lang)[0]
-                    else:
-                        detected_lang = None
-                subtitles = self._extract_automatic_subtitles(info)
+                    detected_langs = list(info.get('automatic_captions', {}).keys())
+                    detected_lang = detected_langs[0] if detected_langs else None
+                # Elegir idioma de subtítulo a usar
+                subs_lang = preferred_lang if preferred_lang and preferred_lang != 'auto' else detected_lang
+                subtitles = self._extract_automatic_subtitles(info, subs_lang)
                 return {
                     'video_id': video_id,
                     'original_title': title,
@@ -196,14 +204,18 @@ class YouTubeClient:
             logger.error(f"yt-dlp error: {str(e)}")
             raise YouTubeServiceError(f"Error al obtener info del video: {str(e)}")
 
-    def _extract_automatic_subtitles(self, info: dict) -> str:
-        """Extrae solo subtítulos automáticos en español"""
+    def _extract_automatic_subtitles(self, info: dict, lang: Optional[str] = None) -> str:
+        """Extrae subtítulos automáticos en el idioma solicitado o, si no existe, en el primero disponible"""
         auto_subs = info.get('automatic_captions', {})
-        for lang in ['es', 'es-419']:
-            if lang in auto_subs:
-                sub_url = auto_subs[lang][0]['url']
-                return self._download_subtitle(sub_url)
-        raise ValueError("No se encontraron subtítulos automáticos en español")
+        # Si se especifica idioma y existe, usarlo
+        if lang and lang in auto_subs:
+            sub_url = auto_subs[lang][0]['url']
+            return self._download_subtitle(sub_url)
+        # Si no, usar el primero disponible
+        for l, tracks in auto_subs.items():
+            if tracks:
+                return self._download_subtitle(tracks[0]['url'])
+        raise ValueError("No se encontraron subtítulos automáticos en el idioma base ni en ningún otro idioma disponible")
 
     def _download_subtitle(self, url: str) -> str:
         """Descarga subtítulos, maneja VTT, SRT, listas M3U8 segmentadas y JSON de YouTube"""
@@ -328,12 +340,10 @@ class TranslationProcessor:
 
     def process_video(self, url: str) -> Dict:
         """Main processing method"""
-        video_info = self.client.get_video_info(url)
+        video_info = self.client.get_video_info(url, preferred_lang=self.source_lang)
         self._save_original_subtitles(video_info['subtitles'], video_info.get('original_language', self.source_lang))
-        
         translated_titles = self._translate_titles(video_info['original_title'])
         translated_subs = self._translate_subtitles(video_info['subtitles'], video_info.get('original_language', self.source_lang))
-        
         return {
             'video_id': video_info['video_id'],
             'titles': translated_titles,
@@ -342,7 +352,7 @@ class TranslationProcessor:
 
     def process_video_custom(self, url: str, translate_title: bool, translate_subs: bool, translate_desc: bool) -> Dict:
         """Procesa el vídeo según las opciones elegidas"""
-        video_info = self.client.get_video_info(url)
+        video_info = self.client.get_video_info(url, preferred_lang=self.source_lang)
         result = {'video_id': video_info['video_id']}
         lang = video_info.get('original_language', self.source_lang)
         if translate_title:
@@ -351,8 +361,6 @@ class TranslationProcessor:
             self._save_original_subtitles(video_info['subtitles'], lang)
             result['subtitles'] = self._translate_subtitles(video_info['subtitles'], lang)
         if translate_desc:
-            # Obtener descripción del video (si existe)
-            # Si no está en video_info, intentar obtenerla con la API de YouTube
             desc = video_info.get('description')
             if desc is None:
                 desc = self._get_description_from_api(video_info['video_id'])
@@ -784,7 +792,7 @@ class YouTubeTranslatorApp:
         print("1. Solo títulos/descripciones")
         print("2. Solo subtítulos")
         print("3. Ambos (títulos/descripciones y subtítulos)")
-        print("0. No subir nada ahora")
+        print("0. No subir nada ahora\n")
         choice = input("Selecciona una opción (0-3): ").strip()
         if choice == '0':
             print("Puedes subir los subtítulos y títulos más tarde usando la opción de subir desde carpeta existente.")
@@ -848,7 +856,7 @@ class YouTubeTranslatorApp:
                     lang_code = file.stem.split('_', 1)[-1]
                     subtitles[lang_code] = file
         if not any([titles, descriptions, subtitles]):
-            print("No se encontraron archivos de traducción válidos en la carpeta.")
+            print("\nNo se encontraron archivos de traducción válidos en la carpeta.")
             return
         # Mostrar resumen
         print("\nResumen de archivos encontrados:")
@@ -863,7 +871,7 @@ class YouTubeTranslatorApp:
         print("1. Solo títulos/descripciones")
         print("2. Solo subtítulos")
         print("3. Ambos (títulos/descripciones y subtítulos)")
-        print("0. Cancelar")
+        print("0. Cancelar\n")
         sub_choice = input("Selecciona una opción (0-3): ").strip()
         if sub_choice == '0':
             print("Operación cancelada.")
@@ -909,35 +917,37 @@ if __name__ == "__main__":
     print("\n===== YouTube Translator Tool =====\n")
     app = YouTubeTranslatorApp()
     while True:
-        print(f"\nMenú principal (idioma base actual: {app.source_lang}):")
+        print(f"\nMenú principal (idioma base actual: {app.source_lang}):\n")
         print("1. Traducir vídeo completo (título, subtítulos, descripción)")
         print("2. Autenticarse con YouTube")
         print("3. Subir traducciones desde carpeta existente")
         print("4. Descargar títulos, descripciones y subtítulos automáticos disponibles para revisar manualmente")
         print("5. Traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado")
         print("6. Salir")
-        print("7. Cambiar/definir idioma base")
+        print("7. Cambiar/definir idioma base\n")
         choice = input("Selecciona una opción (1-7): ").strip()
+        # En todas las llamadas a get_video_info, pasar el idioma base detectado o definido por el usuario
+        # Opción 1: Traducir vídeo completo
         if choice == '1':
-            print("\n=== Traducir vídeo completo (título, subtítulos, descripción) ===")
+            print("\n=== Traducir vídeo completo (título, subtítulos, descripción) ===\n")
             url = input("Introduce la URL del vídeo de YouTube: ").strip()
             folder_name = input("Introduce el nombre de la carpeta para guardar las traducciones: ").strip()
             output_dir = Path('translations') / folder_name
             os.makedirs(output_dir, exist_ok=True)
-            print("¿Qué deseas traducir?")
+            print("\n¿Qué deseas traducir?\n")
             print("1. Título, subtítulos y descripción")
             print("2. Solo título y subtítulos")
             print("3. Solo subtítulos")
             print("4. Solo título")
             print("5. Solo descripción")
-            print("0. Cancelar")
+            print("0. Cancelar\n")
             opt = input("Selecciona una opción (0-5): ").strip()
             if opt == '0':
                 print("Operación cancelada.")
                 continue
             # Obtener idioma base detectado
             try:
-                video_info = app.youtube_client.get_video_info(url)
+                video_info = app.youtube_client.get_video_info(url, preferred_lang=app.source_lang)
                 detected_lang = video_info.get('original_language', app.source_lang)
                 print(f"\n🌐 Idioma base detectado: {detected_lang}")
                 resp = input("¿Es correcto este idioma base? (s/n): ").strip().lower()
@@ -945,7 +955,7 @@ if __name__ == "__main__":
                     detected_lang = input("Introduce el código de idioma base correcto (por ejemplo, es, en, fr): ").strip().lower() or detected_lang
                 app.source_lang = detected_lang
             except Exception as e:
-                print(f"❌ Error al obtener información del vídeo: {e}")
+                print(f"\n❌ Error al obtener información del vídeo: {e}")
                 continue
             translate_title = opt in ['1', '2', '4']
             translate_subs = opt in ['1', '2', '3']
@@ -954,20 +964,10 @@ if __name__ == "__main__":
             try:
                 result = processor.process_video_custom(url, translate_title, translate_subs, translate_desc)
                 print("\n✅ Traducción completada. Archivos generados en:", output_dir)
-                print("Puedes subir los resultados usando la opción 3 del menú.")
+                print("\nPuedes subir los resultados usando la opción 3 del menú.")
             except Exception as e:
-                print(f"❌ Error al procesar el vídeo: {e}")
-        elif choice == '2':
-            try:
-                app.youtube_manager.authenticate()
-                print("✅ Autenticación completada.")
-            except Exception as e:
-                print(f"❌ Error de autenticación: {e}")
-        elif choice == '3':
-            try:
-                app.upload_from_existing_folder()
-            except Exception as e:
-                print(f"❌ Error al subir desde carpeta existente: {e}")
+                print(f"\n❌ Error al procesar el vídeo: {e}")
+        # Opción 4: Descargar títulos, descripciones y subtítulos automáticos para revisión manual
         elif choice == '4':
             print("\n=== Descargar títulos, descripciones y subtítulos automáticos para revisión manual ===")
             url = input("Introduce la URL del vídeo de YouTube: ").strip()
@@ -975,7 +975,7 @@ if __name__ == "__main__":
             output_dir = Path('translations') / folder_name
             os.makedirs(output_dir / 'subtitles', exist_ok=True)
             try:
-                video_info = app.youtube_client.get_video_info(url)
+                video_info = app.youtube_client.get_video_info(url, preferred_lang=app.source_lang)
                 lang = video_info.get('original_language', app.source_lang)
                 print(f"\n🌐 Idioma base detectado: {lang}")
                 resp = input("¿Es correcto este idioma base? (s/n): ").strip().lower()
@@ -986,21 +986,21 @@ if __name__ == "__main__":
                 srt_path = output_dir / 'subtitles' / f'original_{lang}.srt'
                 with open(srt_path, 'w', encoding='utf-8') as f:
                     f.write(subs)
-                print(f"Subtítulos automáticos descargados y guardados en: {srt_path}")
+                print(f"\nSubtítulos automáticos descargados y guardados en: {srt_path}")
                 # Guardar título
                 title = video_info.get('original_title', '')
                 titles_path = output_dir / 'original_title.txt'
                 with open(titles_path, 'w', encoding='utf-8') as f:
                     f.write(title)
-                print(f"Título original guardado en: {titles_path}")
+                print(f"\nTítulo original guardado en: {titles_path}")
                 # Guardar descripción
                 description = video_info.get('description', '')
                 desc_path = output_dir / 'original_description.txt'
                 with open(desc_path, 'w', encoding='utf-8') as f:
                     f.write(description)
-                print(f"Descripción original guardada en: {desc_path}")
+                print(f"\nDescripción original guardada en: {desc_path}")
             except Exception as e:
-                print(f"❌ Error al descargar información base: {e}")
+                print(f"\n❌ Error al descargar información base: {e}")
         elif choice == '5':
             app.translate_from_manual_srt()
         elif choice == '6':
@@ -1010,6 +1010,8 @@ if __name__ == "__main__":
             try:
                 app.change_base_language()
             except Exception as e:
-                print(f"❌ Error al cambiar el idioma base: {e}")
+                print(f"\n❌ Error al cambiar el idioma base: {e}")
+        elif choice == '3':
+            app.upload_from_existing_folder()
         else:
-            print("Opción no válida. Intenta de nuevo.")
+            print("\nOpción no válida. Intenta de nuevo.")
