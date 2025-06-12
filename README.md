@@ -28,7 +28,7 @@
 
 ## ¿Qué es este script?
 
-Este script automatiza la traducción de títulos, subtítulos y descripciones de vídeos de YouTube **desde cualquier idioma base** a los idiomas que elijas (configurados en `TARGET_LANGUAGES` dentro del script). El idioma base se autodetecta si es posible, o puedes elegirlo manualmente. Permite subir tanto los títulos, subtítulos y descripciones traducidos a tu canal de YouTube mediante la API oficial.
+Este script automatiza la traducción y subida de títulos, subtítulos y descripciones de vídeos de YouTube **desde cualquier idioma base** a los idiomas que elijas (configurados en `TARGET_LANGUAGES` dentro del script). El idioma base se autodetecta si es posible, o puedes elegirlo manualmente. Permite subir tanto los títulos, subtítulos y descripciones traducidos a tu canal de YouTube mediante la API oficial.
 
 ## ¿Qué hace el script?
 
