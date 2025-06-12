@@ -2,29 +2,6 @@
  ▀  adhunt3rs   |   2025   |   V: 0.7  ▀
 
 # YouTube Translator Tool — Guía de uso
-<details>
-<summary>Últimos cambios (junio 2025)</summary>
-
-- **Selección de idioma base flexible:** Ahora el script autodetecta el idioma base del vídeo (si es posible) o te permite elegirlo manualmente. Puedes traducir desde cualquier idioma soportado por Google Translate, no solo desde español.
-- **Conservación de localizaciones existentes:** Al subir títulos y descripciones traducidos, el script conserva todos los idiomas ya presentes en el vídeo. Si intentas añadir una traducción para un idioma que ya existe, el script te preguntará si quieres sobrescribir el título y/o descripción de ese idioma.
-- **Nunca se pierden localizaciones previas:** Solo se actualizan los idiomas que elijas y confirmes, el resto permanece intacto.
-- **Traducción y subida selectiva desde SRT revisado:** Puedes elegir si subir solo títulos/descripciones, solo subtítulos, o ambos. El script pregunta antes de sobrescribir cualquier pista o localización existente.
-- **Previsualización de títulos traducidos:** Antes de subir, el script muestra por consola los títulos generados para que puedas revisarlos.
-- **Control total sobre la subida:** Tras traducir, puedes decidir si subir o no los resultados, y se te pedirá la URL/ID del vídeo si decides subir.
-- **Menú interactivo ampliado:** Nuevas opciones para descargar solo subtítulos, traducir/subir desde SRT revisado, y subir desde carpeta existente.
-- **Organización en carpetas:** Todos los archivos generados se guardan bajo `translations/NOMBRE_CARPETA/` para cada vídeo.
-- **Logs y advertencias mejorados:** El script informa de cada paso, errores y advertencias relevantes.
-
----
-
-## Aclaraciones importantes sobre el flujo de subida
-
-- **Después de traducir:** El script siempre te preguntará si deseas subir los resultados a YouTube. Puedes cancelar en ese momento y conservar solo los archivos generados en la carpeta correspondiente.
-- **Si decides subir:** Se te pedirá la URL o el ID del vídeo de YouTube al que quieres subir las traducciones (puedes copiarla directamente desde YouTube).
-- **Previsualización antes de subir:** Los títulos traducidos generados se mostrarán por consola antes de la subida, para que puedas revisarlos y confirmar si deseas continuar.
-- **Control total:** Puedes elegir subir solo títulos/descripciones, solo subtítulos, o ambos (especialmente al trabajar desde un SRT revisado).
-- **Sobrescritura controlada:** Si ya existen localizaciones o pistas de subtítulos para un idioma, el script te preguntará si deseas sobrescribirlas.
-</details>
 
 ## ¿Qué es este script?
 
@@ -139,7 +116,7 @@ Para que el script pueda subir traducciones a YouTube, necesitas dos archivos:
 
 ---
 
-## Configuración del script
+## Configuración de idomas de destino
 
 1. **Idiomas de destino:**  
    Edita el diccionario `TARGET_LANGUAGES` en el script para elegir los idiomas a traducir. 
@@ -180,43 +157,17 @@ Para que el script pueda subir traducciones a YouTube, necesitas dos archivos:
    - Opción 5: Traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado
    - Opción 6: Salir
 
-3. **Para traducir y subir:**
-   - Selecciona `1`
-   - Introduce la URL del vídeo de YouTube
-   - El script autodetectará el idioma base o te pedirá que lo indiques
-   - Elige qué deseas traducir: título, subtítulos, descripción, o cualquier combinación de ellos
-   - Introduce un nombre de carpeta (obligatorio) para guardar los resultados bajo la carpeta `translations/` (por ejemplo: `video_matematicas_2025`)
-   - Indica si deseas subir los resultados a YouTube (`y` para sí, `n` para no)
-
-**Importante:** Cada vídeo debe tener su propia carpeta bajo `translations/` para mantener organizadas las traducciones. Si la carpeta ya existe, el script la reutilizará.
-
-4. **Para descargar títulos, descripciones y subtítulos automáticos en el idioma base:**
-   
-   > **Nota:** Con esta opción puedes descargar los subtítulos extraídos (base) para REVISARLOS MANUALMENTE para corregir errores. A partir de un buen archivo base, revisado, las traducciones tendrán mucho más sentido. Tenlo en cuenta.
-
-   - Selecciona `4`
-   - Introduce la URL del vídeo de YouTube
-   - Indica el nombre de la carpeta para guardar los subtítulos
-   - El script autodetectará el idioma base del vídeo (título, descripción y subtítulos). Si no puede detectarlo, te pedirá que lo indiques manualmente.
-   - Se guardarán el archivo `original_{lang}.srt` en la subcarpeta `subtitles/`, el título en `original_title.txt` y la descripción en `original_description.txt` para su revisión manual. **Estos archivos estarán en el idioma base detectado o definido.**
-   - Puedes editar estos archivos manualmente antes de traducir o subir. El script usará el contenido actualizado.
-
-5. **Para traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado:**
-   - Selecciona `5`
-   - Indica la carpeta donde está el archivo `original_IDIOMA.srt` revisado
-   - Elige si deseas subir los subtítulos traducidos a YouTube en ese momento
-
 ---
 
 ## Códigos de idioma soportados
-
+<details><summary>Ver lista de idiomas y códigos comunes (clic para desplegar)</summary>
 El script utiliza los códigos de idioma de Google Translate. Puedes consultar la lista completa de códigos soportados aquí:
 
 - [Lista oficial de códigos de idioma de Google Translate (documentación de googletrans)](https://py-googletrans.readthedocs.io/en/latest/#googletrans-languages)
 - [Tabla rápida de referencia (Wikipedia)](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)
 
-<details>
-<summary>Ver lista de idiomas y códigos comunes (clic para desplegar)</summary>
+
+
 
 | Idioma        | Código  |
 |-------------- |---------|
@@ -264,13 +215,16 @@ El script utiliza los códigos de idioma de Google Translate. Puedes consultar l
 | Bengalí       | bn      |
 | Swahili       | sw      |
 
-</details>
+
 
 Puedes añadir o quitar idiomas en el diccionario `TARGET_LANGUAGES` del script según tus necesidades.
+</details>
 
 ---
 
 ## Uso de cuotas de la API de YouTube
+
+<details><summary>Detalles sobre las cuotas de Youtube Data API v3 (click para desplegar)</summary>
 
 La API de YouTube tiene un sistema de cuotas limitado por proyecto. Actualmente, cada proyecto de Google Cloud tiene un límite de **10,000 unidades de cuota al día** (puedes consultar y gestionar tu cuota en la [consola de Google Cloud](https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas)).
 
@@ -286,158 +240,14 @@ La API de YouTube tiene un sistema de cuotas limitado por proyecto. Actualmente,
 **Recomendación:**
 - Si tienes muchos vídeos o necesitas subir muchas traducciones, vigila tu cuota diaria para evitar bloqueos.
 - Subir títulos/descripciones/subtítulos para muchos idiomas puede consumir varias centenas de unidades en un solo vídeo.
-
----
-
-## Estructura de carpetas y archivos generados
-
-- Todas las traducciones y archivos relacionados con un vídeo se guardan en `translations/NOMBRE_CARPETA/`.
-- Archivos generados:
-  - `translated_titles.json`: Títulos traducidos (si se elige traducir título)
-  - `translated_descriptions.json`: Descripciones traducidas (si se elige traducir descripción; se traduce la descripción original en el idioma base a todos los idiomas seleccionados)
-  - `subtitles/original_IDIOMA.srt`: Subtítulos originales en el idioma base detectado o definido (por ejemplo, `original_es.srt` para español, `original_en.srt` para inglés, etc.)
-  - `subtitles/translated_{lang}.srt`: Subtítulos traducidos a cada idioma (si se elige traducir subtítulos)
-  - `original_title.txt`: Título original en el idioma base detectado o definido
-  - `original_description.txt`: Descripción original en el idioma base detectado o definido
-
----
-
-## Cómo funciona la detección y selección de idioma base
-
-- El script intenta **autodetectar el idioma base** del vídeo (título, descripción y subtítulos) automáticamente.
-- Si no puede detectarlo, o si el usuario prefiere otro idioma, permite **corregir o definir manualmente** el idioma base antes de descargar, traducir o subir.
-- Todos los archivos descargados y generados (título, descripción, subtítulos) estarán en el idioma base detectado o definido por el usuario.
-- Puedes editar estos archivos antes de traducir o subir, y el script usará el contenido actualizado.
-
----
-
-## Uso paso a paso
-
-1. **Ejecuta el script:**
-
-   ```powershell
-   python ytranslator.py
-   ```
-
-2. **Sigue el menú interactivo:**
-   - Opción 1: Traducir vídeo
-   - Opción 2: Autenticarse con YouTube
-   - Opción 3: Subir traducciones desde carpeta existente
-   - Opción 4: Descargar títulos, descripciones y subtítulos automáticos para revisión manual
-   - Opción 5: Traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado
-   - Opción 6: Salir
-
-3. **Para traducir y subir:**
-   - Selecciona `1`
-   - Introduce la URL del vídeo de YouTube
-   - El script autodetectará el idioma base o te pedirá que lo indiques
-   - Elige qué deseas traducir: título, subtítulos, descripción, o cualquier combinación de ellos
-   - Introduce un nombre de carpeta (obligatorio) para guardar los resultados bajo la carpeta `translations/` (por ejemplo: `video_matematicas_2025`)
-   - Indica si deseas subir los resultados a YouTube (`y` para sí, `n` para no)
-
-**Importante:** Cada vídeo debe tener su propia carpeta bajo `translations/` para mantener organizadas las traducciones. Si la carpeta ya existe, el script la reutilizará.
-
-4. **Para descargar títulos, descripciones y subtítulos automáticos en el idioma base:**
-   
-   > **Nota:** Con esta opción puedes descargar los subtítulos extraídos (base) para REVISARLOS MANUALMENTE para corregir errores. A partir de un buen archivo base, revisado, las traducciones tendrán mucho más sentido. Tenlo en cuenta.
-
-   - Selecciona `4`
-   - Introduce la URL del vídeo de YouTube
-   - Indica el nombre de la carpeta para guardar los subtítulos
-   - El script autodetectará el idioma base del vídeo (título, descripción y subtítulos). Si no puede detectarlo, te pedirá que lo indiques manualmente.
-   - Se guardarán el archivo `original_{lang}.srt` en la subcarpeta `subtitles/`, el título en `original_title.txt` y la descripción en `original_description.txt` para su revisión manual. **Estos archivos estarán en el idioma base detectado o definido.**
-   - Puedes editar estos archivos manualmente antes de traducir o subir. El script usará el contenido actualizado.
-
-5. **Para traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado:**
-   - Selecciona `5`
-   - Indica la carpeta donde está el archivo `original_IDIOMA.srt` revisado
-   - Elige si deseas subir los subtítulos traducidos a YouTube en ese momento
-
----
-
-## Códigos de idioma soportados
-
-El script utiliza los códigos de idioma de Google Translate. Puedes consultar la lista completa de códigos soportados aquí:
-
-- [Lista oficial de códigos de idioma de Google Translate (documentación de googletrans)](https://py-googletrans.readthedocs.io/en/latest/#googletrans-languages)
-- [Tabla rápida de referencia (Wikipedia)](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes)
-
-<details>
-<summary>Ver lista de idiomas y códigos comunes (clic para desplegar)</summary>
-
-| Idioma        | Código  |
-|-------------- |---------|
-| Español       | es      |
-| Inglés        | en      |
-| Italiano      | it      |
-| Francés       | fr      |
-| Alemán        | de      |
-| Portugués     | pt      |
-| Ruso          | ru      |
-| Chino (simpl.)| zh-CN   |
-| Chino (trad.) | zh-TW   |
-| Japonés       | ja      |
-| Coreano       | ko      |
-| Árabe         | ar      |
-| Hindi         | hi      |
-| Turco         | tr      |
-| Polaco        | pl      |
-| Neerlandés    | nl      |
-| Sueco         | sv      |
-| Griego        | el      |
-| Checo         | cs      |
-| Húngaro       | hu      |
-| Rumano        | ro      |
-| Danés         | da      |
-| Noruego       | no      |
-| Finés         | fi      |
-| Hebreo        | iw      |
-| Ucraniano     | uk      |
-| Catalán       | ca      |
-| Búlgaro       | bg      |
-| Croata        | hr      |
-| Eslovaco      | sk      |
-| Esloveno      | sl      |
-| Estonio       | et      |
-| Letón         | lv      |
-| Lituano       | lt      |
-| Serbio        | sr      |
-| Tailandés     | th      |
-| Vietnamita    | vi      |
-| Indonesio     | id      |
-| Malayo        | ms      |
-| Filipino      | tl      |
-| Persa         | fa      |
-| Bengalí       | bn      |
-| Swahili       | sw      |
-
 </details>
 
-Puedes añadir o quitar idiomas en el diccionario `TARGET_LANGUAGES` del script según tus necesidades.
-
----
-
-## Uso de cuotas de la API de YouTube
-
-La API de YouTube tiene un sistema de cuotas limitado por proyecto. Actualmente, cada proyecto de Google Cloud tiene un límite de **10,000 unidades de cuota al día** (puedes consultar y gestionar tu cuota en la [consola de Google Cloud](https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas)).
-
-- **¿Cuándo se consumen cuotas?**
-  - **Al obtener datos del vídeo** (por ejemplo, para extraer la descripción original si no está disponible en la descarga): cada consulta a la API (método `videos.list`) consume **1 unidad** por petición.
-  - **Al subir títulos, descripciones o subtítulos traducidos** (método `videos.update` y `captions.insert`): cada subida consume **50 unidades** por petición.
-  - **Al autenticarte** (primer login): consumo mínimo.
-
-- **¿Cuándo NO se consumen cuotas?**
-  - **Durante la traducción**: la traducción de títulos, subtítulos y descripciones se realiza localmente usando Google Translate (no la API oficial de Google Cloud), por lo que **no consume cuota de la API de YouTube**.
-  - **Al descargar subtítulos automáticos**: se usa `yt-dlp` y no la API de YouTube, por lo que no consume cuota.
-
-**Recomendación:**
-- Si tienes muchos vídeos o necesitas subir muchas traducciones, vigila tu cuota diaria para evitar bloqueos.
-- Subir títulos/descripciones/subtítulos para muchos idiomas puede consumir varias centenas de unidades en un solo vídeo.
-
 ---
 
 ## Estructura de carpetas y archivos generados
+<details><summary>Qué archivos crea este script (click para desplegar)</summary>
 
+- El script crea un archivo de log `LOG_ytranslator.log` en la carpeta raíz del script.
 - Todas las traducciones y archivos relacionados con un vídeo se guardan en `translations/NOMBRE_CARPETA/`.
 - Archivos generados:
   - `translated_titles.json`: Títulos traducidos (si se elige traducir título)
@@ -446,19 +256,21 @@ La API de YouTube tiene un sistema de cuotas limitado por proyecto. Actualmente,
   - `subtitles/translated_{lang}.srt`: Subtítulos traducidos a cada idioma (si se elige traducir subtítulos)
   - `original_title.txt`: Título original en el idioma base detectado o definido
   - `original_description.txt`: Descripción original en el idioma base detectado o definido
-
----
-
-## Cómo funciona la detección y selección de idioma base
-
-- El script intenta **autodetectar el idioma base** del vídeo (título, descripción y subtítulos) automáticamente.
-- Si no puede detectarlo, o si el usuario prefiere otro idioma, permite **corregir o definir manualmente** el idioma base antes de descargar, traducir o subir.
-- Todos los archivos descargados y generados (título, descripción, subtítulos) estarán en el idioma base detectado o definido por el usuario.
-- Puedes editar estos archivos antes de traducir o subir, y el script usará el contenido actualizado.
+> **Puedes editar los archivos `.txt` y `.srt` generados antes de traducir o subir, si deseas revisar o mejorar el contenido manualmente.**
+</details>
 
 ---
 
 ## Solución de problemas
+
+<details>
+<summary>Solución de problemas (clic para desplegar)</summary>
+
+- **Error 403/400 al subir:** Asegúrate de ser el propietario del vídeo y de estar autenticado correctamente.
+- **Error 409 al subir subtítulos:** Borra la pista anterior en YouTube Studio antes de volver a subir.
+- **Traducción de baja calidad:** Edita los subtítulos originales antes de traducir o considera integrar una API de traducción profesional.
+</details>
+
 <details>
 <summary>Notas y recomendaciones (clic para desplegar)</summary>
 
@@ -467,16 +279,6 @@ La API de YouTube tiene un sistema de cuotas limitado por proyecto. Actualmente,
 - **Si subes varias veces una pista de subtítulos con el mismo nombre e idioma, YouTube dará error 409:** Borra la pista anterior si necesitas reemplazarla.
 - **El script solo puede modificar vídeos de los que seas propietario** (no funciona con permisos de editor).
 - **La calidad de la traducción depende de Google Translate:** Si necesitas traducción profesional, edita los subtítulos originales antes de traducir o considera integrar otra API.
-
-</details>
-
-<details>
-<summary>Solución de problemas (clic para desplegar)</summary>
-
-- **Error 403/400 al subir:** Asegúrate de ser el propietario del vídeo y de estar autenticado correctamente.
-- **Error 409 al subir subtítulos:** Borra la pista anterior en YouTube Studio antes de volver a subir.
-- **Traducción de baja calidad:** Edita los subtítulos originales antes de traducir o considera integrar una API de traducción profesional.
-
 </details>
 
 ---
