@@ -29,7 +29,7 @@ print_banner()
 
 LANGUAGES = {
     'es': {
-        'main_title': "===== YouTube Translator Tool =====",
+        'main_title': "===== YouTube Translator & Uploader Tool =====",
         'main_menu': "\nMenú principal (idioma base actual: {lang}):\n\n"
                       "1. Traducir vídeo completo (título, subtítulos, descripción)\n"
                       "2. Descargar títulos, descripciones y subtítulos automáticos disponibles para revisar manualmente\n"
@@ -127,7 +127,7 @@ LANGUAGES = {
         'unsupported_base_lang_confirm': "El código '{code}' no está en la lista de idiomas soportados. ¿Deseas continuar? (s/n): ",
     },
     'en': {
-        'main_title': "===== YouTube Translator Tool =====",
+        'main_title': "===== YouTube Translator & Uploader Tool =====",
         'main_menu': "\nMain menu (current base language: {lang}):\n\n"
                       "1. Translate full video (title, subtitles, description)\n"
                       "2. Download available titles, descriptions, and auto subtitles for manual review\n"
