@@ -1,4 +1,20 @@
-print("""
+import os
+import re
+import json
+import logging
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import requests
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.http import MediaFileUpload
+from yt_dlp import YoutubeDL
+
+def print_banner():
+    print("""
 ██╗   ██╗████████╗██████╗  █████╗ ███╗   ██╗███████╗██╗      █████╗ ████████╗ ██████╗ ██████╗ 
 ╚██╗ ██╔╝╚══██╔══╝██╔══██╗██╔══██╗████╗  ██║██╔════╝██║     ██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗
  ╚████╔╝    ██║   ██████╔╝███████║██╔██╗ ██║███████╗██║     ███████║   ██║   ██║   ██║██████╔╝
@@ -6,26 +22,196 @@ print("""
    ██║      ██║   ██║  ██║██║  ██║██║ ╚████║███████║███████╗██║  ██║   ██║   ╚██████╔╝██║  ██║
    ╚═╝      ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝
 
-            |   2025   |   V: 0.7   |   adhunt3rs   |
+        |   2025   |   V: 0.71   |   adhunt3rs   |   Hold your Unicorn   |
 ----------------------------------------------------------------------------------------------""")
-import os
-import json
-import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
-from dataclasses import dataclass
-import argparse
 
-# Third-party imports
-from googletrans import Translator
-from yt_dlp import YoutubeDL
-import requests
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaFileUpload
+print_banner()
+
+LANGUAGES = {
+    'es': {
+        'main_title': "===== YouTube Translator Tool =====",
+        'main_menu': "\nMenú principal (idioma base actual: {lang}):\n\n"
+                      "1. Traducir vídeo completo (título, subtítulos, descripción)\n"
+                      "2. Descargar títulos, descripciones y subtítulos automáticos disponibles para revisar manualmente\n"
+                      "3. Traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado\n"
+                      "4. Subir traducciones desde carpeta existente\n"
+                      "5. Autenticarse con YouTube\n"
+                      "6. Cambiar/definir idioma del vídeo base\n"
+                      "7. Elegir idioma de la interfaz\n"
+                      "8. Salir\n",
+        'choose_option': "Selecciona una opción (1-8): ",
+        'interface_lang_changed': "\nIdioma de la interfaz cambiado a: {lang}\n",
+        'select_interface_lang': "Select interface language:\n1. Spanish\n2. English\nOption: ",
+        'invalid_option': "\nOpción no válida.\n",
+        'exit': "\nSaliendo...\n",
+        'operation_cancelled': "\nOperación cancelada.\n",
+        'detected_base_lang': "\n🌐 Idioma base detectado: {lang}\n",
+        'error_getting_video_info': "\n❌ Error al obtener información del vídeo: {error}\n",
+        'translation_completed': "\n✅ Traducción completada. Archivos generados en: {output_dir}\n",
+        'can_upload_results': "\nPuedes subir los resultados usando la opción 3 del menú.\n",
+        'error_processing_video': "\n❌ Error al procesar el vídeo: {error}\n",
+        'download_titles_desc_subs': "\n=== Descargar títulos, descripciones y subtítulos automáticos para revisión manual ===\n",
+        'subs_downloaded': "\nSubtítulos automáticos descargados y guardados en: {srt_path}\n",
+        'title_saved': "\nTítulo original guardado en: {titles_path}\n",
+        'desc_saved': "\nDescripción original guardada en: {desc_path}\n",
+        'error_downloading_base_info': "\n❌ Error al descargar información base: {error}\n",
+        'error_changing_base_lang': "\n❌ Error al cambiar el idioma base: {error}\n",
+        'invalid_option_retry': "\nOpción no válida. Intenta de nuevo.\n",
+        'manual_srt_title': "\n=== Traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado ===\n",
+        'subs_folder_not_found': "\nLa carpeta de subtítulos no existe. Descarga primero los subtítulos automáticos y revísalos.\n",
+        'warn_base_lang_not_in_targets': "\n⚠️  [ADVERTENCIA] El código '{code}' no está en los idiomas de destino configurados. Si es correcto, continúa; si no, revisa la lista de códigos soportados en la documentación.\n",
+        'no_original_srt_found': "\nNo se encontró ningún archivo original_*.srt en {subs_dir}. Asegúrate de haberlo revisado y guardado.\n",
+        'file_not_found': "\nNo se encontró el archivo {srt_file}.\n",
+        'available_original_files': "\nArchivos originales disponibles en la carpeta:\n",
+        'translating_reviewed_subs': "\nTraduciendo subtítulos revisados a los idiomas configurados desde '{lang}'...\n",
+        'subs_translation_done': "\nTraducción de subtítulos completada. Archivos generados:\n",
+        'input_original_title': "\nIntroduce el título original del vídeo (en el idioma base, tal como debe aparecer en YouTube):\n",
+        'title_empty_skip': "\nEl título no puede estar vacío. Se omite la traducción de título.\n",
+        'translating_title': "\nTraduciendo título a los idiomas configurados...\n",
+        'title_translation_done': "\nTraducción de título completada.\n",
+        'generated_titles': "\nTítulos traducidos generados:\n",
+        'what_upload_youtube': "\n¿Qué deseas subir a YouTube?\n",
+        'upload_option_1': "1. Solo títulos/descripciones",
+        'upload_option_2': "2. Solo subtítulos",
+        'upload_option_3': "3. Ambos (títulos/descripciones y subtítulos)",
+        'upload_option_0': "0. No subir nada ahora\n",
+        'choose_upload_option': "Selecciona una opción (0-3): ",
+        'can_upload_later': "\nPuedes subir los subtítulos y títulos más tarde usando la opción de subir desde carpeta existente.\n",
+        'input_youtube_url_or_id': "Introduce la URL o el ID del vídeo de YouTube: ",
+        'authenticating_youtube': "\nAutenticando con YouTube...\n",
+        'upload_success': "\n¡Subida completada con éxito!\n",
+        'upload_from_folder_title': "\nSubir traducciones desde carpeta existente\n",
+        'input_folder_upload': "Introduce el nombre de la carpeta en 'translations/' con las traducciones listas para subir: ",
+        'folder_not_found': "La carpeta {output_dir} no existe.",
+        'no_valid_files_found': "\nNo se encontraron archivos de traducción válidos en la carpeta.\n",
+        'summary_found_files': "\nResumen de archivos encontrados:\n",
+        'found_titles': "- Títulos traducidos: {titles}\n",
+        'found_descriptions': "- Descripciones traducidas: {descriptions}\n",
+        'found_subtitles': "- Subtítulos: {subtitles}\n",
+        'current_base_lang': "\nIdioma base actual: {lang}\n",
+        'input_new_base_lang': "Introduce el nuevo código de idioma base (por ejemplo, es, en, fr): ",
+        'warn_base_lang_not_supported': "\n⚠️  [ADVERTENCIA] El código '{code}' no está en la lista de idiomas soportados por Google Translate. Si es correcto, continúa; si no, revisa la lista de códigos soportados en la documentación.\n",
+        'base_lang_changed': "\nIdioma base cambiado a: {lang}\n",
+        'translator_using_googletrans': "\n[Traductor] Usando googletrans para {target_lang} (desde {source_lang})\n",
+        'translator_using_fallback': "\n[Traductor] Usando fallback (API pública) para {target_lang} (desde {source_lang})\n",
+        'translator_failed': "\n[Traductor] No se pudo traducir para {target_lang}, devolviendo original.\n",
+        'translator_title_warn': "\n⚠️  [ADVERTENCIA] No se pudo traducir el título al idioma {lang_name} ({lang_code}) o la traducción es igual al original.\n",
+        'translator_title_error': "\n❌  [ERROR] Falló la traducción del título a {lang_name} ({lang_code}): {error}\n",
+        'translator_sub_warn': "\n⚠️  [ADVERTENCIA] No se pudo traducir un bloque al idioma {lang_code} o la traducción es igual al original.\n",
+        'translator_sub_error': "\n❌  [ERROR] Falló la traducción de subtítulos a {lang_code}: {error}\n",
+        'api_body_to_send': "\nCuerpo final que se enviará a la API (con truncado, descripción y localizations):\n",
+        'api_response': "\nRespuesta de la API:\n",
+        'api_uploaded_localizations': "\nTítulos y descripciones localizados subidos:\n",
+        'api_uploaded_none': "\nNo se detectaron localizaciones subidas en la respuesta de la API.\n",
+        'api_update_error': "\nError al actualizar con localizations:\n",
+        'api_subtitle_exists': "\nYa existe una pista de subtítulos para {track_name} ({lang_code}). ¿Quieres sobrescribirla? (s/n): ",
+        'api_subtitle_skip': "\nOmitiendo subida de subtítulos para {track_name} ({lang_code})\n",
+        'api_subtitle_deleted': "\nPista de subtítulos existente para {track_name} ({lang_code}) eliminada.\n",
+        'api_subtitle_uploading': "\nSubiendo subtítulos para {track_name} ({lang_code}): {file_path}\n",
+        'api_subtitle_uploaded': "\nSubtítulos subidos correctamente para {track_name} ({lang_code})\n",
+        'api_subtitle_upload_error': "\nError al subir subtítulos para {track_name} ({lang_code}): {error}\n",
+        'api_get_subtitles_error': "\nNo se pudieron obtener las pistas de subtítulos existentes: {error}\n",
+        'api_no_video_found': "\nNo se encontró el video con id {video_id}\n",
+        'api_localization_exists': "\nYa existe una localización para el idioma {code} (título: '{title}').\n",
+        'api_overwrite_localization': "¿Quieres sobrescribir el título/descripcion en {code}? (s/n): ",
+    },
+    'en': {
+        'main_title': "===== YouTube Translator Tool =====",
+        'main_menu': "\nMain menu (current base language: {lang}):\n\n"
+                      "1. Translate full video (title, subtitles, description)\n"
+                      "2. Download available titles, descriptions, and auto subtitles for manual review\n"
+                      "3. Translate and (optionally) upload subtitles from a reviewed SRT file\n"
+                      "4. Upload translations from existing folder\n"
+                      "5. Authenticate with YouTube\n"
+                      "6. Change/set base video language\n"
+                      "7. Select interface language\n"
+                      "8. Exit\n",
+        'choose_option': "Choose an option (1-8): ",
+        'interface_lang_changed': "\nInterface language changed to: {lang}\n",
+        'select_interface_lang': "Select interface language:\n1. Spanish\n2. English\nOption: ",
+        'invalid_option': "\nInvalid option.\n",
+        'exit': "\nExiting...\n",
+        'operation_cancelled': "\nOperation cancelled.\n",
+        'detected_base_lang': "\n🌐 Detected base language: {lang}\n",
+        'error_getting_video_info': "\n❌ Error getting video info: {error}\n",
+        'translation_completed': "\n✅ Translation completed. Files generated in: {output_dir}\n",
+        'can_upload_results': "\nYou can upload the results using option 3 in the menu.\n",
+        'error_processing_video': "\n❌ Error processing video: {error}\n",
+        'download_titles_desc_subs': "\n=== Download titles, descriptions and auto subtitles for manual review ===\n",
+        'subs_downloaded': "\nAuto subtitles downloaded and saved in: {srt_path}\n",
+        'title_saved': "\nOriginal title saved in: {titles_path}\n",
+        'desc_saved': "\nOriginal description saved in: {desc_path}\n",
+        'error_downloading_base_info': "\n❌ Error downloading base info: {error}\n",
+        'error_changing_base_lang': "\n❌ Error changing base language: {error}\n",
+        'invalid_option_retry': "\nInvalid option. Try again.\n",
+        'manual_srt_title': "\n=== Translate and (optionally) upload subtitles from a reviewed SRT file ===\n",
+        'subs_folder_not_found': "\nThe subtitles folder does not exist. Download the auto subtitles first and review them.\n",
+        'warn_base_lang_not_in_targets': "\n⚠️  [WARNING] The code '{code}' is not in the configured target languages. If correct, continue; if not, check the supported codes in the documentation.\n",
+        'no_original_srt_found': "\nNo original_*.srt file found in {subs_dir}. Make sure you have reviewed and saved it.\n",
+        'file_not_found': "\nFile not found: {srt_file}.\n",
+        'available_original_files': "\nOriginal files available in the folder:\n",
+        'translating_reviewed_subs': "\nTranslating reviewed subtitles to configured languages from '{lang}'...\n",
+        'subs_translation_done': "\nSubtitles translation completed. Files generated:\n",
+        'input_original_title': "\nEnter the original video title (in the base language, as it should appear on YouTube):\n",
+        'title_empty_skip': "\nTitle cannot be empty. Skipping title translation.\n",
+        'translating_title': "\nTranslating title to configured languages...\n",
+        'title_translation_done': "\nTitle translation completed.\n",
+        'generated_titles': "\nGenerated translated titles:\n",
+        'what_upload_youtube': "\nWhat do you want to upload to YouTube?\n",
+        'upload_option_1': "1. Only titles/descriptions",
+        'upload_option_2': "2. Only subtitles",
+        'upload_option_3': "3. Both (titles/descriptions and subtitles)",
+        'upload_option_0': "0. Do not upload now\n",
+        'choose_upload_option': "Choose an option (0-3): ",
+        'can_upload_later': "\nYou can upload subtitles and titles later using the upload from existing folder option.\n",
+        'input_youtube_url_or_id': "Enter the YouTube video URL or ID: ",
+        'authenticating_youtube': "\nAuthenticating with YouTube...\n",
+        'upload_success': "\nUpload completed successfully!\n",
+        'upload_from_folder_title': "\nUpload translations from existing folder\n",
+        'input_folder_upload': "Enter the folder name in 'translations/' with the translations ready to upload: ",
+        'folder_not_found': "Folder {output_dir} does not exist.",
+        'no_valid_files_found': "\nNo valid translation files found in the folder.\n",
+        'summary_found_files': "\nSummary of found files:\n",
+        'found_titles': "- Translated titles: {titles}\n",
+        'found_descriptions': "- Translated descriptions: {descriptions}\n",
+        'found_subtitles': "- Subtitles: {subtitles}\n",
+        'current_base_lang': "\nCurrent base language: {lang}\n",
+        'input_new_base_lang': "Enter the new base language code (e.g., es, en, fr): ",
+        'warn_base_lang_not_supported': "\n⚠️  [WARNING] The code '{code}' is not in the list of languages supported by Google Translate. If correct, continue; if not, check the supported codes in the documentation.\n",
+        'base_lang_changed': "\nBase language changed to: {lang}\n",
+        'translator_using_googletrans': "\n[Translator] Using googletrans for {target_lang} (from {source_lang})\n",
+        'translator_using_fallback': "\n[Translator] Using fallback (public API) for {target_lang} (from {source_lang})\n",
+        'translator_failed': "\n[Translator] Could not translate for {target_lang}, returning original.\n",
+        'translator_title_warn': "\n⚠️  [WARNING] Could not translate the title to {lang_name} ({lang_code}) or translation is same as original.\n",
+        'translator_title_error': "\n❌  [ERROR] Failed to translate title to {lang_name} ({lang_code}): {error}\n",
+        'translator_sub_warn': "\n⚠️  [WARNING] Could not translate a block to {lang_code} or translation is same as original.\n",
+        'translator_sub_error': "\n❌  [ERROR] Failed to translate subtitles to {lang_code}: {error}\n",
+        'api_body_to_send': "\nBody to be sent to the API (truncated, description and localizations):\n",
+        'api_response': "\nAPI response:\n",
+        'api_uploaded_localizations': "\nLocalized titles and descriptions uploaded:\n",
+        'api_uploaded_none': "\nNo uploaded localizations detected in the API response.\n",
+        'api_update_error': "\nError updating with localizations:\n",
+        'api_subtitle_exists': "\nA subtitle track already exists for {track_name} ({lang_code}). Overwrite? (y/n): ",
+        'api_subtitle_skip': "\nSkipping upload of subtitles for {track_name} ({lang_code})\n",
+        'api_subtitle_deleted': "\nExisting subtitle track for {track_name} ({lang_code}) deleted.\n",
+        'api_subtitle_uploading': "\nUploading subtitles for {track_name} ({lang_code}): {file_path}\n",
+        'api_subtitle_uploaded': "\nSubtitles uploaded successfully for {track_name} ({lang_code})\n",
+        'api_subtitle_upload_error': "\nError uploading subtitles for {track_name} ({lang_code}): {error}\n",
+        'api_get_subtitles_error': "\nCould not get existing subtitle tracks: {error}\n",
+        'api_no_video_found': "\nNo video found with id {video_id}\n",
+        'api_localization_exists': "\nA localization already exists for language {code} (title: '{title}').\n",
+        'api_overwrite_localization': "Do you want to overwrite the title/description in {code}? (y/n): ",
+    }
+}
+
+current_interface_lang = 'es'
+
+def tr(key, **kwargs):
+    lang = globals().get('current_interface_lang', 'es')
+    msg = LANGUAGES.get(lang, LANGUAGES['es']).get(key)
+    if msg is None:
+        return key
+    return msg.format(**kwargs)
 
 # Configuration
 from dataclasses import dataclass, field
@@ -106,7 +292,7 @@ class GoogleTranslateStrategy(TranslationStrategy):
         try:
             translated = self._translate_with_googletrans(text, target_lang, source_lang)
             if translated:
-                print(f"[Traductor] Usando googletrans para {target_lang} (desde {source_lang})")
+                print(tr('translator_using_googletrans', target_lang=target_lang, source_lang=source_lang))
                 self.cache[cache_key] = translated
                 return translated
         except Exception as e:
@@ -115,12 +301,12 @@ class GoogleTranslateStrategy(TranslationStrategy):
         try:
             translated = self._translate_with_fallback(text, target_lang, source_lang)
             if translated:
-                print(f"[Traductor] Usando fallback (API pública) para {target_lang} (desde {source_lang})")
+                print(tr('translator_using_fallback', target_lang=target_lang, source_lang=source_lang))
                 self.cache[cache_key] = translated
                 return translated
         except Exception as e:
             logger.error(f"Fallback translation failed: {str(e)}")
-        print(f"[Traductor] No se pudo traducir para {target_lang}, devolviendo original.")
+        print(tr('translator_failed', target_lang=target_lang))
         return text  # Fallback al texto original
 
     def _translate_with_googletrans(self, text: str, target_lang: str, source_lang: str = 'auto') -> str:
@@ -403,14 +589,13 @@ class TranslationProcessor:
         return results
 
     def _translate_title(self, title: str, lang_name: str, lang_code: str) -> Dict[str, str]:
-        """Translates a single title"""
         try:
             translated = self.client.translation_strategy.translate(title, lang_code, self.source_lang)
             if not translated or translated.strip() == "" or translated.strip() == title.strip():
-                print(f"⚠️  [ADVERTENCIA] No se pudo traducir el título al idioma {lang_name} ({lang_code}) o la traducción es igual al original.")
+                print(tr('translator_title_warn', lang_name=lang_name, lang_code=lang_code))
             return {'code': lang_code, 'title': translated}
         except Exception as e:
-            print(f"❌  [ERROR] Falló la traducción del título a {lang_name} ({lang_code}): {str(e)}")
+            print(tr('translator_title_error', lang_name=lang_name, lang_code=lang_code, error=str(e)))
             logger.error(f"Title translation error ({lang_name}): {str(e)}")
             raise
 
@@ -442,7 +627,6 @@ class TranslationProcessor:
         return results
 
     def _translate_single_subtitle(self, subtitles: str, lang_code: str, output_dir: Path) -> Path:
-        """Traduce cada bloque SRT completo (no línea por línea) para mayor coherencia y mantiene la sincronización."""
         try:
             translated_parts = []
             subtitle_parts = subtitles.strip().split('\n\n')
@@ -454,13 +638,11 @@ class TranslationProcessor:
                         text_block = '\n'.join(lines[2:]).strip()
                         translated_text = self.client.translation_strategy.translate(text_block, lang_code, self.source_lang)
                         if not translated_text or translated_text.strip() == '' or translated_text.strip() == text_block.strip():
-                            print(f"⚠️  [ADVERTENCIA] No se pudo traducir un bloque al idioma {lang_code} o la traducción es igual al original.")
+                            print(tr('translator_sub_warn', lang_code=lang_code))
                         # Mantener el mismo número de líneas que el bloque original para evitar desincronización
                         orig_lines = text_block.split('\n')
                         trans_lines = translated_text.split('\n')
-                        # Si el número de líneas no coincide, intentar ajustar
                         if len(trans_lines) != len(orig_lines):
-                            # Si solo hay una línea traducida pero varias originales, repartir el texto
                             if len(trans_lines) == 1 and len(orig_lines) > 1:
                                 import textwrap
                                 wrapped = textwrap.wrap(translated_text, width=max(10, int(len(translated_text)/len(orig_lines))))
@@ -478,7 +660,7 @@ class TranslationProcessor:
                 f.write('\n\n'.join(translated_parts))
             return output_file
         except Exception as e:
-            print(f"❌  [ERROR] Falló la traducción de subtítulos a {lang_code}: {str(e)}")
+            print(tr('translator_sub_error', lang_code=lang_code, error=str(e)))
             logger.error(f"Subtitle translation error ({lang_code}): {str(e)}")
             raise
 
@@ -608,11 +790,13 @@ class YouTubeManager:
             code = translation.get('code')
             title_trad = translation.get('title', '').strip()[:100]
             if code and code != 'es' and title_trad and title_trad != original_title:
-                # Si ya existe, preguntar si sobrescribir
                 if code in localizations:
-                    print(f"Ya existe una localización para el idioma {code} (título: '{localizations[code].get('title','')}').")
-                    resp = input(f"¿Quieres sobrescribir el título/descripcion en {code}? (s/n): ").strip().lower()
-                    if resp != 's':
+                    # Fix 3: typo en key 'title,' -> 'title'
+                    print(tr('api_localization_exists', code=code, title=localizations[code].get('title')))
+                    # Fix 2: validación de respuesta según idioma
+                    resp = input(tr('api_overwrite_localization', code=code)).strip().lower()
+                    yes = 's' if globals().get('current_interface_lang', 'es') == 'es' else 'y'
+                    if resp != yes:
                         continue
                 loc = {'title': title_trad}
                 if descriptions and code in descriptions:
@@ -630,17 +814,17 @@ class YouTubeManager:
             "snippet": snippet_update,
             "localizations": localizations
         }
-        print("Cuerpo final que se enviará a la API (con truncado, descripción y localizations):")
+        print(tr('api_body_to_send'))
         print(json.dumps(body, ensure_ascii=False, indent=2))
         try:
             response = self.service.videos().update(
                 part="snippet,localizations",
                 body=body
             ).execute()
-            print("Respuesta de la API:")
+            print(tr('api_response'))
             print(json.dumps(response, ensure_ascii=False, indent=2))
             if 'localizations' in response:
-                print("\nTítulos y descripciones localizados subidos:")
+                print(tr('api_uploaded_localizations'))
                 for code, loc in response['localizations'].items():
                     title = loc.get('title', '')
                     desc = loc.get('description', '')
@@ -648,9 +832,9 @@ class YouTubeManager:
                     if desc:
                         print(f"    Descripción: {desc}")
             else:
-                print("No se detectaron localizaciones subidas en la respuesta de la API.")
+                print(tr('api_uploaded_none'))
         except HttpError as e:
-            print("Error al actualizar con localizations:")
+            print(tr('api_update_error'))
             print(e)
             print(getattr(e, 'content', ''))
             raise YouTubeServiceError(f"YouTube API error: {e}")
@@ -672,7 +856,6 @@ class YouTubeManager:
             existing_captions = []
         for lang_code, file_path in subtitles.items():
             track_name = lang_code_to_name.get(lang_code, lang_code)
-            # Comprobar si ya existe una pista con ese idioma y nombre
             cap_id = None
             for cap in existing_captions:
                 snippet = cap.get('snippet', {})
@@ -680,21 +863,20 @@ class YouTubeManager:
                     cap_id = cap.get('id')
                     break
             if cap_id:
-                resp = input(f"Ya existe una pista de subtítulos para {track_name} ({lang_code}). ¿Quieres sobrescribirla? (s/n): ").strip().lower()
+                resp = input(tr('api_subtitle_exists', track_name=track_name, lang_code=lang_code)).strip().lower()
                 if resp != 's':
-                    print(f"Omitiendo subida de subtítulos para {track_name} ({lang_code})")
+                    print(tr('api_subtitle_skip', track_name=track_name, lang_code=lang_code))
                     logger.info(f"Omitiendo subida de subtítulos para {track_name} ({lang_code})")
                     continue
-                # Eliminar pista existente
                 try:
                     self.service.captions().delete(id=cap_id).execute()
-                    print(f"Pista de subtítulos existente para {track_name} ({lang_code}) eliminada.")
+                    print(tr('api_subtitle_deleted', track_name=track_name, lang_code=lang_code))
                 except Exception as e:
                     print(f"No se pudo eliminar la pista existente: {e}")
                     logger.error(f"No se pudo eliminar la pista existente: {e}")
                     continue
             try:
-                print(f"Subiendo subtítulos para {track_name} ({lang_code}): {file_path}")
+                print(tr('api_subtitle_uploading', track_name=track_name, lang_code=lang_code, file_path=file_path))
                 media = MediaFileUpload(
                     file_path,
                     mimetype='application/octet-stream',
@@ -712,11 +894,11 @@ class YouTubeManager:
                     },
                     media_body=media
                 ).execute()
-                print(f"Subtítulos subidos correctamente para {track_name} ({lang_code})")
+                print(tr('api_subtitle_uploaded', track_name=track_name, lang_code=lang_code))
                 logger.info(f"Successfully uploaded subtitles for {lang_code} with name {track_name}")
             except Exception as e:
                 logger.error(f"Failed to upload subtitles for {lang_code}: {str(e)}")
-                print(f"Error al subir subtítulos para {track_name} ({lang_code}): {str(e)}")
+                print(tr('api_subtitle_upload_error', track_name=track_name, lang_code=lang_code, error=str(e)))
                 continue
 
 class YouTubeTranslatorApp:
@@ -727,235 +909,246 @@ class YouTubeTranslatorApp:
         self.source_lang = 'auto'
 
     def translate_from_manual_srt(self):
-        print("\nTraducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado")
-        folder_name = input("Introduce el nombre de la carpeta en 'translations/' donde está el SRT revisado: ").strip()
+        print(tr('manual_srt_title'))
+        folder_name = input(tr('input_folder_manual')).strip()
         output_dir = Path('translations') / folder_name
         subs_dir = output_dir / 'subtitles'
         if not subs_dir.exists():
-            print("La carpeta de subtítulos no existe. Descarga primero los subtítulos automáticos y revísalos.")
+            print(tr('subs_folder_not_found'))
             return
         # Preguntar idioma base
-        source_lang = input("Introduce el código del idioma base del vídeo (por ejemplo, es, en, fr) o deja vacío para autodetectar: ").strip().lower() or 'auto'
-        # Validar código de idioma base
+        source_lang = input(tr('input_base_lang_or_auto')).strip().lower() or 'auto'
         valid_langs = set([v.lower() for v in config.TARGET_LANGUAGES.values()])
         if source_lang != 'auto' and source_lang not in valid_langs:
-            print(f"⚠️  [ADVERTENCIA] El código '{source_lang}' no está en los idiomas de destino configurados. Si es correcto, continúa; si no, revisa la lista de códigos soportados en la documentación.")
+            print(tr('warn_base_lang_not_in_targets', code=source_lang))
         self.source_lang = source_lang
         srt_file = subs_dir / f'original_{self.source_lang}.srt'
         if not srt_file.exists():
-            # Buscar archivos originales disponibles
             disponibles = list(subs_dir.glob('original_*.srt'))
             if not disponibles:
-                print(f"No se encontró ningún archivo original_*.srt en {subs_dir}. Asegúrate de haberlo revisado y guardado.")
+                print(tr('no_original_srt_found', subs_dir=subs_dir))
                 return
-            print(f"No se encontró el archivo {srt_file}.")
-            print("Archivos originales disponibles en la carpeta:")
+            print(tr('file_not_found', srt_file=srt_file))
+            print(tr('available_original_files'))
             for idx, f in enumerate(disponibles, 1):
                 print(f"  {idx}. {f.name}")
-            sel = input("Selecciona el número del archivo a usar como base (o pulsa Enter para cancelar): ").strip()
+            sel = input(tr('select_file_number')).strip()
             if not sel.isdigit() or int(sel) < 1 or int(sel) > len(disponibles):
-                print("Operación cancelada.")
+                print(tr('operation_cancelled'))
                 return
             srt_file = disponibles[int(sel)-1]
-            # Extraer el nuevo source_lang del nombre de archivo
-            import re
             m = re.match(r'original_([a-zA-Z\-]+)\.srt', srt_file.name)
             if m:
                 self.source_lang = m.group(1).lower()
-            else:
-                print("No se pudo determinar el idioma base del archivo seleccionado. Usa el valor introducido.")
-        # Leer SRT revisado
         with open(srt_file, encoding='utf-8') as f:
             srt_content = f.read()
-        print(f"Traduciendo subtítulos revisados a los idiomas configurados desde '{self.source_lang}'...")
+        print(tr('translating_reviewed_subs', lang=self.source_lang))
         processor = TranslationProcessor(self.youtube_client, output_dir, self.source_lang)
         translated_subs = processor._translate_subtitles(srt_content, self.source_lang)
-        print("Traducción de subtítulos completada. Archivos generados:")
+        print(tr('subs_translation_done'))
         for lang, path in translated_subs.items():
             print(f"  - {lang}: {path}")
-        print("\nIntroduce el título original del vídeo (en el idioma base, tal como debe aparecer en YouTube):")
-        original_title = input("Título original: ").strip()
+        print(tr('input_original_title'))
+        original_title = input(tr('input_title')).strip()
         if not original_title:
-            print("El título no puede estar vacío. Se omite la traducción de título.")
+            print(tr('title_empty_skip'))
             translated_titles = None
         else:
-            print("Traduciendo título a los idiomas configurados...")
+            print(tr('translating_title'))
             processor.source_lang = self.source_lang
             translated_titles = processor._translate_titles(original_title)
-            print("Traducción de título completada.")
-            print("\nTítulos traducidos generados:")
+            print(tr('title_translation_done'))
+            print(tr('generated_titles'))
             for lang, data in (translated_titles or {}).items():
-                print(f"  - {lang} [{data.get('code','')}] : {data.get('title','')}")
+                print(f"  - {lang}: {data.get('title','')}")
         if translated_titles:
             processor._save_translated_titles(original_title, translated_titles)
-        print("\n¿Qué deseas subir a YouTube?")
-        print("1. Solo títulos/descripciones")
-        print("2. Solo subtítulos")
-        print("3. Ambos (títulos/descripciones y subtítulos)")
-        print("0. No subir nada ahora\n")
-        choice = input("Selecciona una opción (0-3): ").strip()
+        print(tr('what_upload_youtube'))
+        print(tr('upload_option_1'))
+        print(tr('upload_option_2'))
+        print(tr('upload_option_3'))
+        print(tr('upload_option_0'))
+        choice = input(tr('choose_upload_option')).strip()
         if choice == '0':
-            print("Puedes subir los subtítulos y títulos más tarde usando la opción de subir desde carpeta existente.")
+            print(tr('can_upload_later'))
             return
         upload_titles = choice in ['1', '3']
         upload_subs = choice in ['2', '3']
         if upload_titles or upload_subs:
-            url = input("Introduce la URL o el ID del vídeo de YouTube: ").strip()
+            url = input(tr('input_youtube_url_or_id')).strip()
             if not self.youtube_manager.service:
-                print("\nAutenticando con YouTube...")
+                print(tr('authenticating_youtube'))
                 self.youtube_manager.authenticate()
-            video_id = None
-            if url:
-                import re
-                m = re.search(r'(?:v=|youtu\.be/)([\w-]+)', url)
-                if m:
-                    video_id = m.group(1)
-                else:
-                    video_id = url
-            if not video_id:
-                print("No se pudo extraer el ID del vídeo.")
-                return
-            print("\nSubiendo a YouTube...")
             self.youtube_manager.upload_translations_custom(
-                video_id,
+                url,
                 translated_titles if upload_titles else None,
                 translated_subs if upload_subs else None,
                 None
             )
-            print("\n¡Subida completada con éxito!")
+            print(tr('upload_success'))
 
     def upload_from_existing_folder(self):
-        print("\nSubir traducciones desde carpeta existente")
-        folder_name = input("Introduce el nombre de la carpeta en 'translations/' con las traducciones listas para subir: ").strip()
+        print(tr('upload_from_folder_title'))
+        folder_name = input(tr('input_folder_upload')).strip()
         output_dir = Path('translations') / folder_name
         if not output_dir.exists():
-            print(f"La carpeta {output_dir} no existe.")
+            print(tr('folder_not_found', output_dir=output_dir))
             return
-        # Cargar títulos
         titles_path = output_dir / 'translated_titles.json'
         titles = None
         if titles_path.exists():
             with open(titles_path, encoding='utf-8') as f:
-                data = json.load(f)
-                titles = data.get('translations')
-        # Cargar descripciones
+                titles = json.load(f).get('translations')
         desc_path = output_dir / 'translated_descriptions.json'
         descriptions = None
         if desc_path.exists():
             with open(desc_path, encoding='utf-8') as f:
                 descriptions = json.load(f)
-        # Cargar subtítulos
         subs_dir = output_dir / 'subtitles'
         subtitles = {}
         if subs_dir.exists():
-            for file in subs_dir.iterdir():
-                if file.name.startswith('translated_') and file.suffix == '.srt':
-                    lang_code = file.stem.split('_', 1)[-1]
-                    subtitles[lang_code] = file
-                elif file.name.startswith('original_') and file.suffix == '.srt':
-                    lang_code = file.stem.split('_', 1)[-1]
-                    subtitles[lang_code] = file
+            for file in subs_dir.glob('translated_*.srt'):
+                lang_code = file.stem.split('_', 1)[-1]
+                subtitles[lang_code] = file
+            for file in subs_dir.glob('original_*.srt'):
+                lang_code = file.stem.split('_', 1)[-1]
+                subtitles[lang_code] = file
         if not any([titles, descriptions, subtitles]):
-            print("\nNo se encontraron archivos de traducción válidos en la carpeta.")
+            print(tr('no_valid_files_found'))
             return
-        # Mostrar resumen
-        print("\nResumen de archivos encontrados:")
+        print(tr('summary_found_files'))
         if titles:
-            print("- Títulos traducidos:", ', '.join([f"{k} [{v.get('code','')}]" for k,v in titles.items()]))
+            print(tr('found_titles', titles=', '.join([f"{k} [{v.get('code','')}]" for k,v in titles.items()])))
         if descriptions:
-            print("- Descripciones traducidas:", ', '.join(descriptions.keys()))
+            print(tr('found_descriptions', descriptions=', '.join(descriptions.keys())))
         if subtitles:
-            print("- Subtítulos:", ', '.join(subtitles.keys()))
-        # Elegir qué subir
-        print("\n¿Qué deseas subir a YouTube?")
-        print("1. Solo títulos/descripciones")
-        print("2. Solo subtítulos")
-        print("3. Ambos (títulos/descripciones y subtítulos)")
-        print("0. Cancelar\n")
-        sub_choice = input("Selecciona una opción (0-3): ").strip()
+            print(tr('found_subtitles', subtitles=', '.join(subtitles.keys())))
+        print(tr('what_upload_youtube'))
+        print(tr('upload_option_1'))
+        print(tr('upload_option_2'))
+        print(tr('upload_option_3'))
+        print(tr('upload_option_0'))
+        sub_choice = input(tr('choose_upload_option')).strip()
         if sub_choice == '0':
-            print("Operación cancelada.")
+            print(tr('operation_cancelled'))
             return
         upload_titles = sub_choice in ['1', '3']
         upload_subs = sub_choice in ['2', '3']
-        url = input("Introduce la URL o el ID del vídeo de YouTube: ").strip()
+        url = input(tr('input_youtube_url_or_id')).strip()
         if not self.youtube_manager.service:
-            print("\nAutenticando con YouTube...")
+            print(tr('authenticating_youtube'))
             self.youtube_manager.authenticate()
-        # Obtener video_id
-        video_id = None
-        if url:
-            import re
-            m = re.search(r'(?:v=|youtu\.be/)([\w-]+)', url)
-            if m:
-                video_id = m.group(1)
-            else:
-                video_id = url  # Si ya es el ID
-        if not video_id:
-            print("No se pudo extraer el ID del vídeo.")
-            return
-        print("\nSubiendo a YouTube...")
         self.youtube_manager.upload_translations_custom(
-            video_id,
+            url,
             titles if upload_titles else None,
             subtitles if upload_subs else None,
             descriptions if upload_titles else None
         )
-        print("\n¡Subida completada con éxito!")
+        print(tr('upload_success'))
 
     def change_base_language(self):
-        print(f"\nIdioma base actual: {self.source_lang}")
-        new_lang = input("Introduce el nuevo código de idioma base (por ejemplo, es, en, fr): ").strip().lower()
-        # Permitir cualquier código, pero advertir si no está en la lista de Google Translate
-        from googletrans import LANGUAGES
-        if new_lang not in LANGUAGES and new_lang not in LANGUAGES.values():
-            print(f"⚠️  [ADVERTENCIA] El código '{new_lang}' no está en la lista de idiomas soportados por Google Translate. Si es correcto, continúa; si no, revisa la lista de códigos soportados en la documentación.")
+        print(tr('current_base_lang', lang=self.source_lang))
+        new_lang = input(tr('input_new_base_lang')).strip().lower()
+        from googletrans import LANGUAGES as GT_LANGUAGES
+        if new_lang not in GT_LANGUAGES and new_lang not in GT_LANGUAGES.values():
+            print(tr('warn_base_lang_not_supported', code=new_lang))
         self.source_lang = new_lang
-        print(f"Idioma base cambiado a: {self.source_lang}")
+        print(tr('base_lang_changed', lang=self.source_lang))
 
 if __name__ == "__main__":
-    print("\n===== YouTube Translator Tool =====\n")
+    print(tr('main_title'))
     app = YouTubeTranslatorApp()
     while True:
-        print(f"\nMenú principal (idioma base actual: {app.source_lang}):\n")
-        print("1. Traducir vídeo completo (título, subtítulos, descripción)")
-        print("2. Autenticarse con YouTube")
-        print("3. Subir traducciones desde carpeta existente")
-        print("4. Descargar títulos, descripciones y subtítulos automáticos disponibles para revisar manualmente")
-        print("5. Traducir y (opcionalmente) subir subtítulos a partir de un archivo SRT revisado")
-        print("6. Salir")
-        print("7. Cambiar/definir idioma base\n")
-        choice = input("Selecciona una opción (1-7): ").strip()
-        # En todas las llamadas a get_video_info, pasar el idioma base detectado o definido por el usuario
-        # Opción 1: Traducir vídeo completo
-        if choice == '1':
-            print("\n=== Traducir vídeo completo (título, subtítulos, descripción) ===\n")
-            url = input("Introduce la URL del vídeo de YouTube: ").strip()
-            folder_name = input("Introduce el nombre de la carpeta para guardar las traducciones: ").strip()
+        print(tr('main_menu', lang=app.source_lang))
+        choice = input(tr('choose_option')).strip()
+        if choice == '8':
+            print(tr('exit'))
+            break
+        elif choice == '7':
+            print(tr('select_interface_lang'))
+            lang_opt = input().strip()
+            if lang_opt == '1':
+                globals()['current_interface_lang'] = 'es'
+                print(tr('interface_lang_changed', lang='Español'))
+            elif lang_opt == '2':
+                globals()['current_interface_lang'] = 'en'
+                print(tr('interface_lang_changed', lang='English'))
+            else:
+                print(tr('invalid_option'))
+            continue
+        elif choice == '6':
+            try:
+                app.change_base_language()
+            except Exception as e:
+                print(tr('error_changing_base_lang', error=e))
+        elif choice == '5':
+            try:
+                print(tr('authenticating_youtube'))
+                app.youtube_manager.authenticate()
+            except Exception as e:
+                print(tr('error_processing_video', error=e))
+        elif choice == '4':
+            app.upload_from_existing_folder()
+        elif choice == '3':
+            app.translate_from_manual_srt()
+        elif choice == '2':
+            # Descargar títulos, descripciones y subtítulos automáticos para revisión manual
+            print(tr('download_titles_desc_subs'))
+            url = input(tr('input_youtube_url')).strip()
+            folder_name = input(tr('input_folder_name_base')).strip()
             output_dir = Path('translations') / folder_name
             os.makedirs(output_dir, exist_ok=True)
-            print("\n¿Qué deseas traducir?\n")
-            print("1. Título, subtítulos y descripción")
-            print("2. Solo título y subtítulos")
-            print("3. Solo subtítulos")
-            print("4. Solo título")
-            print("5. Solo descripción")
-            print("0. Cancelar\n")
-            opt = input("Selecciona una opción (0-5): ").strip()
+            try:
+                video_info = app.youtube_client.get_video_info(url, preferred_lang=app.source_lang)
+                # Guardar subtítulos automáticos
+                subs = video_info.get('subtitles', '')
+                srt_path = output_dir / 'subtitles' / f"original_{video_info.get('original_language', app.source_lang)}.srt"
+                os.makedirs(srt_path.parent, exist_ok=True)
+                with open(srt_path, 'w', encoding='utf-8') as f:
+                    f.write(subs)
+                print(tr('subs_downloaded', srt_path=srt_path))
+                # Guardar título
+                title = video_info.get('original_title', '')
+                titles_path = output_dir / 'original_title.txt'
+                with open(titles_path, 'w', encoding='utf-8') as f:
+                    f.write(title)
+                print(tr('title_saved', titles_path=titles_path))
+                # Guardar descripción
+                description = video_info.get('description', '')
+                desc_path = output_dir / 'original_description.txt'
+                with open(desc_path, 'w', encoding='utf-8') as f:
+                    f.write(description)
+                print(tr('desc_saved', desc_path=desc_path))
+            except Exception as e:
+                print(tr('error_downloading_base_info', error=e))
+        elif choice == '1':
+            print(tr('translate_full_title'))
+            url = input(tr('input_youtube_url')).strip()
+            folder_name = input(tr('input_folder_name')).strip()
+            output_dir = Path('translations') / folder_name
+            os.makedirs(output_dir, exist_ok=True)
+            print(tr('what_to_translate'))
+            print(tr('option_1'))
+            print(tr('option_2'))
+            print(tr('option_3'))
+            print(tr('option_4'))
+            print(tr('option_5'))
+            print(tr('option_0'))
+            opt = input(tr('choose_what_to_translate')).strip()
             if opt == '0':
-                print("Operación cancelada.")
+                print(tr('operation_cancelled'))
                 continue
             # Obtener idioma base detectado
             try:
                 video_info = app.youtube_client.get_video_info(url, preferred_lang=app.source_lang)
                 detected_lang = video_info.get('original_language', app.source_lang)
-                print(f"\n🌐 Idioma base detectado: {detected_lang}")
-                resp = input("¿Es correcto este idioma base? (s/n): ").strip().lower()
+                print(tr('detected_base_lang', lang=detected_lang))
+                resp = input(tr('is_base_lang_correct')).strip().lower()
                 if resp != 's':
-                    detected_lang = input("Introduce el código de idioma base correcto (por ejemplo, es, en, fr): ").strip().lower() or detected_lang
+                    detected_lang = input(tr('input_correct_base_lang')).strip().lower() or detected_lang
                 app.source_lang = detected_lang
             except Exception as e:
-                print(f"\n❌ Error al obtener información del vídeo: {e}")
+                print(tr('error_getting_video_info', error=e))
                 continue
             translate_title = opt in ['1', '2', '4']
             translate_subs = opt in ['1', '2', '3']
@@ -963,55 +1156,9 @@ if __name__ == "__main__":
             processor = TranslationProcessor(app.youtube_client, output_dir, app.source_lang)
             try:
                 result = processor.process_video_custom(url, translate_title, translate_subs, translate_desc)
-                print("\n✅ Traducción completada. Archivos generados en:", output_dir)
-                print("\nPuedes subir los resultados usando la opción 3 del menú.")
+                print(tr('translation_completed', output_dir=output_dir))
+                print(tr('can_upload_results'))
             except Exception as e:
-                print(f"\n❌ Error al procesar el vídeo: {e}")
-        # Opción 4: Descargar títulos, descripciones y subtítulos automáticos para revisión manual
-        elif choice == '4':
-            print("\n=== Descargar títulos, descripciones y subtítulos automáticos para revisión manual ===")
-            url = input("Introduce la URL del vídeo de YouTube: ").strip()
-            folder_name = input("Introduce el nombre de la carpeta para guardar la información base: ").strip()
-            output_dir = Path('translations') / folder_name
-            os.makedirs(output_dir / 'subtitles', exist_ok=True)
-            try:
-                video_info = app.youtube_client.get_video_info(url, preferred_lang=app.source_lang)
-                lang = video_info.get('original_language', app.source_lang)
-                print(f"\n🌐 Idioma base detectado: {lang}")
-                resp = input("¿Es correcto este idioma base? (s/n): ").strip().lower()
-                if resp != 's':
-                    lang = input("Introduce el código de idioma base correcto (por ejemplo, es, en, fr): ").strip().lower() or lang
-                # Guardar subtítulos
-                subs = video_info['subtitles']
-                srt_path = output_dir / 'subtitles' / f'original_{lang}.srt'
-                with open(srt_path, 'w', encoding='utf-8') as f:
-                    f.write(subs)
-                print(f"\nSubtítulos automáticos descargados y guardados en: {srt_path}")
-                # Guardar título
-                title = video_info.get('original_title', '')
-                titles_path = output_dir / 'original_title.txt'
-                with open(titles_path, 'w', encoding='utf-8') as f:
-                    f.write(title)
-                print(f"\nTítulo original guardado en: {titles_path}")
-                # Guardar descripción
-                description = video_info.get('description', '')
-                desc_path = output_dir / 'original_description.txt'
-                with open(desc_path, 'w', encoding='utf-8') as f:
-                    f.write(description)
-                print(f"\nDescripción original guardada en: {desc_path}")
-            except Exception as e:
-                print(f"\n❌ Error al descargar información base: {e}")
-        elif choice == '5':
-            app.translate_from_manual_srt()
-        elif choice == '6':
-            print("Saliendo...")
-            break
-        elif choice == '7':
-            try:
-                app.change_base_language()
-            except Exception as e:
-                print(f"\n❌ Error al cambiar el idioma base: {e}")
-        elif choice == '3':
-            app.upload_from_existing_folder()
+                print(tr('error_processing_video', error=e))
         else:
-            print("\nOpción no válida. Intenta de nuevo.")
+            print(tr('invalid_option_retry'))
